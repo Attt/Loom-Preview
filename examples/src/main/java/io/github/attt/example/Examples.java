@@ -1,7 +1,13 @@
 package io.github.attt.example;
 
+import jdk.incubator.concurrent.StructuredTaskScope;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author atpexgo
@@ -52,5 +58,25 @@ public class Examples {
         perTaskExecutor.submit(() -> {
             System.out.printf("%s-newThreadPerTaskExecutor %n", Thread.currentThread().getName());
         });
+
+        StructuredTaskScope.ShutdownOnFailure shutdownOnFailure = new StructuredTaskScope.ShutdownOnFailure();
+        shutdownOnFailure.fork(() -> {
+            System.out.println("taskA");
+            TimeUnit.SECONDS.sleep(1);
+            throw new RuntimeException("error occurred in taskA");
+        });
+
+        shutdownOnFailure.fork(() -> {
+            System.out.println("taskB...");
+            TimeUnit.SECONDS.sleep(5);
+            System.out.println("taskB is finished.");
+            return null;
+        });
+
+        try {
+            shutdownOnFailure.joinUntil(LocalDateTime.now().plusSeconds(10).toInstant(ZoneOffset.UTC));
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+        }
     }
 }
